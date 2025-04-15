@@ -37,6 +37,36 @@ const Todo = ({todo}) => <li>
   <span>({todo.ip})</span>
 </li>;
 
+const viewActivity = (state) => {
+  const styles = (filter) => ({
+    'font-weight': state.filter === filter ? 'bold' : 'normal',
+    cursor: 'pointer'
+  })
+  return <div>
+    <h1>Todo</h1>
+    <div>
+      <span>Show:</span>
+      <span> <a style={styles(0)} $onclick={[search, 0]}>All</a></span> |
+      <span> <a style={styles(1)} $onclick={[search, 1]}>Todo</a></span> |
+      <span> <a style={styles(2)} $onclick={[search, 2]}>Done</a></span>
+    </div>
+    <ul>
+      {
+        state.todos
+          .filter(todo => state.filter === 0 ||
+            (state.filter === 1 && !todo.done) ||
+            (state.filter === 2 && todo.done) )
+          .map((todo) => <Todo todo={todo} />)
+      }
+    </ul>
+    <div>
+      <input placeholder='add todo' onkeyup={keyup} id="new_todo"/>
+      <button $onclick={[add]}>Add</button>
+      <button $onclick={[clear]}>Clear</button>
+    </div>
+  </div>
+}
+
 const view = (state) => {
   const styles = (filter) => ({
     'font-weight': state.filter === filter ? 'bold' : 'normal',

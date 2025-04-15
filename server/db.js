@@ -59,6 +59,15 @@ app.on('@create-activity', (json, ws) => {
   });
 });
 
+app.on('@delete-activity', (json, ws) => {
+  using(db => {
+    const sql = 'delete from activities where id=?';
+    db.run(sql, json.state.id, function () {
+      console.log('  >', 'deleted', json);
+      ws.send(JSON.stringify(json));
+    });
+  });
+});
 
 // References from original TODO list app.
 app.on('@get-all-todo', (json, ws) => {
