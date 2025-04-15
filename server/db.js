@@ -21,14 +21,13 @@ db.serialize(() => {
     db.run(`CREATE TABLE Activities (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 name        TEXT    NOT NULL,
-                ownerId     TEXT    NOT NULL,
-                memberIds   TEXT    NOT NULL
+                ownerId     TEXT    NOT NULL
               );`);
     db.run(`CREATE TABLE ActivityMembers (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                name        TEXT    NOT NULL,
-                ownerId     TEXT    NOT NULL,
-                memberIds   TEXT    NOT NULL
+                activityId INTEGER NOT NULL,
+                memberId TEXT NOT NULL,
+                PRIMARY KEY (activityId, memberId),
+                FOREIGN KEY (activityId) REFERENCES Activities(id)
               );`);    
     console.log("Activities table created!");
 
@@ -58,12 +57,25 @@ app.on('@get-all-activity', (json, ws) => {
 
 app.on('@create-activity', (json, ws) => {
   using(db => {
-    const sql = 'insert into Activities (name, ownerId, memberIds) values (?,?,?)';
-    db.run(sql, json.state.name, json.state.userId, [json.state.userId].toString(), function (e) {
+    const activitySql = 'insert into Activities (name, ownerId) values (?,?)';
+    db.run(activitySql, json.state.name, json.state.userId, function (e) {
       console.log('[DEBUG]', e);
       json.state.id = this.lastID;
-      console.log('  >', 'created', json);
-      ws.send(JSON.stringify(json));
+      console.log('  >', 'created activity', json);
+
+      // Now, insert the creator into the ActivityMembers table
+      const memberSql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
+      db.run(memberSql, this.lastID, json.state.userId, function (memberError) {
+        console.log('[DEBUG]', memberError);
+        if (memberError) {
+          console.error('Error adding creator to ActivityMembers:', memberError);
+          // You might want to handle this error, perhaps by rolling back the Activities insertion
+          // or sending an error message to the client.
+        } else {
+          console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.state.userId });
+        }
+        ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
+      });
     });
   });
 });
