@@ -16,15 +16,15 @@ const keyup = e => {
 };
 
 const add = () => {
-  app.run('//ws:', '@create-activity', {
-    name: (document.getElementById('new_todo') as HTMLInputElement).value,
-    ownerId: 'fakeid'
+  app.run('//ws:', '@create-todo', {
+    title: (document.getElementById('new_todo') as HTMLInputElement).value,
+    done: 0
   })
 };
 
 const toggle = (_, todo) => { app.run('//ws:', '@update-todo', { ...todo, done: !todo.done }) };
 
-const remove = (_, todo) => { app.run('//ws:', '@delete-activity', todo) };
+const remove = (_, todo) => { app.run('//ws:', '@delete-todo', todo) };
 
 const clear = () => { app.run('//ws:', '@delete-all-todo') };
 
@@ -76,7 +76,7 @@ const update = {
 
   '@update-todo': (state, todo) => {
     const idx = state.todos.findIndex(i => i.id === todo.id);
-    if (idx < 0) app.run('//ws:', '@get-all-activity');
+    if (idx < 0) app.run('//ws:', '@get-all-todo');
     else return ({
       ...state,
       todos: [
