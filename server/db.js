@@ -111,6 +111,33 @@ app.on('@leave-activity', (json, ws) => {
   });
 });
 
+// app.on('@start-activity', (json, ws) => {
+//   using(db => {
+//     const sql = 'delete from Activities where id=? and ownerId=?';
+//     db.run(sql, json.state.activityId, json.state.userId, function (err) {
+//       console.log('[DEBUG]deleteActivitiesSql:', err);      
+//       console.log('  >', 'deleted', json);
+//       ws.send(JSON.stringify(json));
+//     });
+//   });
+// });
+
+app.on('@start-activity', (json, ws) => {
+  using(db => {
+    const deleteActivitiesSql = 'delete from Activities where id=? and ownerId=?';
+    db.run(deleteActivitiesSql, json.state.activityId, json.state.userId, function (err) {
+      console.log('[DEBUG]deleteActivitiesSql:', err);
+      
+      const deleteActivityMembersSql = 'delete from ActivityMembers where activityId=?';
+      db.run(deleteActivityMembersSql, json.state.activityId, function (err) {
+        console.log('[DEBUG]deleteActivityMembersSql:', err);
+        console.log('  >', 'deleted', json);
+        ws.send(JSON.stringify(json));        
+      });
+    });
+  });
+});
+
 app.on('@delete-all-activity', (json, ws) => {
   using(db => {
     const deleteActivitiesSql = 'delete from Activities';

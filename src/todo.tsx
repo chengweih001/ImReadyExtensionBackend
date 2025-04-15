@@ -37,6 +37,13 @@ const join = () => {
   })
 };
 
+const start = () => {
+  app.run('//ws:', '@start-activity', {
+    activityId: (document.getElementById('join_activity_id') as HTMLInputElement).value,
+    userId: (document.getElementById('join_user_id') as HTMLInputElement).value,
+  })
+};
+
 const leave = () => {
   app.run('//ws:', '@leave-activity', {
     activityId: (document.getElementById('join_activity_id') as HTMLInputElement).value,
@@ -91,6 +98,7 @@ const view = (state) => {
       <input placeholder='user id' onkeyup={keyupJoin} id="join_user_id"/>
       <button $onclick={[join]}>Join</button>
       <button $onclick={[leave]}>Leave</button>
+      <button $onclick={[start]}>Start</button>
     </div>
   </div>
 }
