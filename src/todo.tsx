@@ -33,8 +33,8 @@ const search = (state, filter) => ({ ...state, filter });
 const Todo = ({todo}) => <li>
   <input type="checkbox" checked={todo.done} $onclick={[toggle, todo]}></input>
   <span style={{color: todo.done ? 'green' : 'red'}}>
-    {todo.title} <a href='#' $onclick={[remove, todo]}>&#9249;</a></span>
-  <span>({todo.ip})</span>
+    {todo.name} <a href='#' $onclick={[remove, todo]}>&#9249;</a></span>
+  <span>({todo.id})</span>
 </li>;
 
 const view = (state) => {

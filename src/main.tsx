@@ -14,4 +14,5 @@ app.on('//ws:', (event, state) => {
 });
 
 todo.mount(document.body);
-ws.onopen = () => app.run('//ws:', '@get-all-todo');
+// ws.onopen = () => app.run('//ws:', '@get-all-todo');
+ws.onopen = () => app.run('//ws:', '@get-all-activity');
