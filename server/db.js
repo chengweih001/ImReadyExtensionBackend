@@ -47,11 +47,21 @@ app.on('@get-all-activity', (json, ws) => {
   using(db => {
     const sql = 'select * from Activities';
     db.all(sql, function (err, rows) {
+      console.log('[DEBUG]Activities table\n', rows);            
       json.state = rows || [];
-      console.log('[DEBUG]', err);      
+      console.log('[DEBUG]', err);         
       console.log('  >', json);
       ws.send(JSON.stringify(json));
     });
+    
+    // TODO: debugging purpose
+    const activityMembersSql = 'select * from ActivityMembers';
+    db.all(activityMembersSql, function (err, rows) {
+      // json.state = rows || [];
+      console.log('[DEBUG]ActivityMembers table\n', rows);      
+      // console.log('  >', json);
+      // ws.send(JSON.stringify(json));
+    });    
   });
 });
 
@@ -60,7 +70,7 @@ app.on('@create-activity', (json, ws) => {
     const activitySql = 'insert into Activities (name, ownerId) values (?,?)';
     db.run(activitySql, json.state.name, json.state.userId, function (e) {
       console.log('[DEBUG]', e);
-      json.state.id = this.lastID;
+      json.state.activityId = this.lastID;
       console.log('  >', 'created activity', json);
 
       // Now, insert the creator into the ActivityMembers table
@@ -82,10 +92,10 @@ app.on('@create-activity', (json, ws) => {
 
 app.on('@join-activity', (json, ws) => {
   using(db => {
-    const sql = 'update todo set memberIds=? where id=?';
-    db.run(sql, json.state.userId, json.state.done, json.ip, json.state.id, function () {
+    const sql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
+    db.run(sql, json.state.activityId, json.state.userId, function () {
       json.state.ip = json.ip;
-      console.log('  >', 'updated', json);
+      console.log('  >', 'joined', json);
       ws.send(JSON.stringify(json));
     });
   });
@@ -93,8 +103,9 @@ app.on('@join-activity', (json, ws) => {
 
 app.on('@delete-all-activity', (json, ws) => {
   using(db => {
-    const sql = 'delete from Activities';
-    db.run(sql, function () {
+    const sql = 'delete from Activities; delete from ActivityMembers';
+    db.run(sql, function (err) {
+      console.log('[DEBUG]', err);
       console.log('  >', 'deleted all', json);
       ws.send(JSON.stringify(json));
     });
