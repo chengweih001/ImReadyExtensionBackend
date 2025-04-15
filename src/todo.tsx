@@ -26,7 +26,7 @@ const toggle = (_, todo) => { app.run('//ws:', '@update-todo', { ...todo, done: 
 
 const remove = (_, todo) => { app.run('//ws:', '@delete-activity', todo) };
 
-const clear = () => { app.run('//ws:', '@delete-all-todo') };
+const clear = () => { app.run('//ws:', '@delete-all-activity') };
 
 const search = (state, filter) => ({ ...state, filter });
 
@@ -72,6 +72,7 @@ const update = {
   '@create-activity': (state, todo) => ({
     ...state, todos: [...state.todos, todo], filter:0
   }),  
+  '@delete-all-activity': state => ({ ...state, todos: [] }),  
   
   '@get-all-todo': (state, todos) => ({ ...state, todos }),
 

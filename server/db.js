@@ -21,7 +21,8 @@ db.serialize(() => {
     db.run(`CREATE TABLE Activities (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 name        TEXT    NOT NULL,
-                ownerId     TEXT    NOT NULL
+                ownerId     TEXT    NOT NULL,
+                memberIds   TEXT    NOT NULL,
               );`);
     console.log("New table created!");
 
@@ -49,24 +50,23 @@ app.on('@get-all-activity', (json, ws) => {
   });
 });
 
-app.on('@get-activity', (json, ws) => {
+app.on('@create-activity', (json, ws) => {
   using(db => {
-    const sql = 'select * from Activities where id=?';
-    db.get(sql, json.state.id, function (err, row) {
-      json.state = row;
-      console.log('  >', json);
+    const sql = 'insert into Activities (name, ownerId, memberIds) values (?,?,?)';
+    db.run(sql, json.state.name, json.state.ownerId, [json.state.ownerId].toString(), function (e) {
+      console.log('[DEBUG]', e);
+      json.state.id = this.lastID;
+      console.log('  >', 'created', json);
       ws.send(JSON.stringify(json));
     });
   });
 });
 
-app.on('@create-activity', (json, ws) => {
+app.on('@delete-all-activity', (json, ws) => {
   using(db => {
-    const sql = 'insert into Activities (name, ownerId) values (?,?)';
-    db.run(sql, json.state.name, json.state.ownerId, function (e) {
-      console.log('[DEBUG]', e);
-      json.state.id = this.lastID;
-      console.log('  >', 'created', json);
+    const sql = 'delete from Activities';
+    db.run(sql, function () {
+      console.log('  >', 'deleted all', json);
       ws.send(JSON.stringify(json));
     });
   });
