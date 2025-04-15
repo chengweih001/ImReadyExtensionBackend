@@ -103,11 +103,16 @@ app.on('@join-activity', (json, ws) => {
 
 app.on('@delete-all-activity', (json, ws) => {
   using(db => {
-    const sql = 'delete from Activities; delete from ActivityMembers';
-    db.run(sql, function (err) {
-      console.log('[DEBUG]', err);
-      console.log('  >', 'deleted all', json);
-      ws.send(JSON.stringify(json));
+    const deleteActivitiesSql = 'delete from Activities';
+    db.run(deleteActivitiesSql, function (err) {
+      console.log('[DEBUG]deleteActivitiesSql:', err);
+      
+      const deleteActivityMembersSql = 'delete from ActivityMembers';
+      db.run(deleteActivityMembersSql, function (err) {
+        console.log('[DEBUG]deleteActivityMembersSql:', err);
+        console.log('  >', 'deleted all', json);
+        ws.send(JSON.stringify(json));        
+      });
     });
   });
 });

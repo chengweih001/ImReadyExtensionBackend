@@ -15,9 +15,24 @@ const keyup = e => {
   }
 };
 
+const keyupJoin = e => {
+  const input = e.target;
+  if (e.keyCode === ENTER && input.value) {
+    join();
+    input.value = '';
+  }
+};
+
 const add = () => {
   app.run('//ws:', '@create-activity', {
     name: (document.getElementById('new_todo') as HTMLInputElement).value,
+    userId: 'fakeid'
+  })
+};
+
+const join = () => {
+  app.run('//ws:', '@join-activity', {
+    activityId: (document.getElementById('join_activity') as HTMLInputElement).value,
     userId: 'fakeid'
   })
 };
@@ -63,6 +78,8 @@ const view = (state) => {
       <input placeholder='add todo' onkeyup={keyup} id="new_todo"/>
       <button $onclick={[add]}>Add</button>
       <button $onclick={[clear]}>Clear</button>
+      <input placeholder='id' onkeyup={keyupJoin} id="join_activity"/>
+      <button $onclick={[join]}>Join</button>
     </div>
   </div>
 }
