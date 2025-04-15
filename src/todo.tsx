@@ -91,7 +91,7 @@ const view = (state) => {
     <div>
       <input placeholder='add todo' onkeyup={keyup} id="new_todo"/>
       <button $onclick={[add]}>Add</button>
-      <button $onclick={[clear]}>Clear</button>
+      <button $onclick={[clear]}>Clear All</button>
     </div>      
     <div>    
       <input placeholder='activity id' onkeyup={keyupJoin} id="join_activity_id"/>
