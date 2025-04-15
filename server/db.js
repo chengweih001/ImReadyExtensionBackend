@@ -21,7 +21,7 @@ db.serialize(() => {
     db.run(`CREATE TABLE Activities (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 name        TEXT    NOT NULL,
-                ownerId     TEXT    NOT NULL,
+                ownerId     TEXT    NOT NULL
               );`);
     console.log("New table created!");
 
@@ -63,7 +63,7 @@ app.on('@get-activity', (json, ws) => {
 app.on('@create-activity', (json, ws) => {
   using(db => {
     const sql = 'insert into Activities (name, ownerId) values (?,?)';
-    db.run(sql, json.state.name, json.ownerId, function (e) {
+    db.run(sql, json.state.name, json.state.ownerId, function (e) {
       console.log('[DEBUG]', e);
       json.state.id = this.lastID;
       console.log('  >', 'created', json);
