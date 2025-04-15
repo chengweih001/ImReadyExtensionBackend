@@ -63,7 +63,6 @@ app.on('@create-activity', (json, ws) => {
     const sql = 'insert into activities (name, ownerId) values (?,?,?)';
     db.run(sql, json.state.name, json.ownerId, function () {
       json.state.id = this.lastID;
-      json.state.ownerId = json.ownerId;
       console.log('  >', 'created', json);
       ws.send(JSON.stringify(json));
     });

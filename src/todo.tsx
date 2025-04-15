@@ -68,6 +68,11 @@ const view = (state) => {
 }
 
 const update = {
+  '@get-all-activity': (state, todos) => ({ ...state, todos }),  
+  '@create-activity': (state, todo) => ({
+    ...state, todos: [...state.todos, todo], filter:0
+  }),  
+  
   '@get-all-todo': (state, todos) => ({ ...state, todos }),
 
   '@create-todo': (state, todo) => ({
