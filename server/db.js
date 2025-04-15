@@ -15,16 +15,22 @@ console.log('Using database: ', dbFile);
 
 const db = new sqlite3.Database(dbFile);
 db.serialize(() => {
-  console.log('[DEBUG]serialize.');
+  console.log('[DEBUG]serialize. exists:', exists);
   if (!exists) {
     // TODO: To add memberIds.
     db.run(`CREATE TABLE Activities (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 name        TEXT    NOT NULL,
                 ownerId     TEXT    NOT NULL,
-                memberIds   TEXT    NOT NULL,
+                memberIds   TEXT    NOT NULL
               );`);
-    console.log("New table created!");
+    db.run(`CREATE TABLE ActivityMembers (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT    NOT NULL,
+                ownerId     TEXT    NOT NULL,
+                memberIds   TEXT    NOT NULL
+              );`);    
+    console.log("Activities table created!");
 
     db.run(`CREATE TABLE TODO (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,10 +59,21 @@ app.on('@get-all-activity', (json, ws) => {
 app.on('@create-activity', (json, ws) => {
   using(db => {
     const sql = 'insert into Activities (name, ownerId, memberIds) values (?,?,?)';
-    db.run(sql, json.state.name, json.state.ownerId, [json.state.ownerId].toString(), function (e) {
+    db.run(sql, json.state.name, json.state.userId, [json.state.userId].toString(), function (e) {
       console.log('[DEBUG]', e);
       json.state.id = this.lastID;
       console.log('  >', 'created', json);
+      ws.send(JSON.stringify(json));
+    });
+  });
+});
+
+app.on('@join-activity', (json, ws) => {
+  using(db => {
+    const sql = 'update todo set memberIds=? where id=?';
+    db.run(sql, json.state.userId, json.state.done, json.ip, json.state.id, function () {
+      json.state.ip = json.ip;
+      console.log('  >', 'updated', json);
       ws.send(JSON.stringify(json));
     });
   });

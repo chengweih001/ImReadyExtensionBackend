@@ -18,7 +18,7 @@ const keyup = e => {
 const add = () => {
   app.run('//ws:', '@create-activity', {
     name: (document.getElementById('new_todo') as HTMLInputElement).value,
-    ownerId: 'fakeid'
+    userId: 'fakeid'
   })
 };
 
