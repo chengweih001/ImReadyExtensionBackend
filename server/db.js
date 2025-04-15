@@ -15,6 +15,7 @@ console.log('Using database: ', dbFile);
 
 const db = new sqlite3.Database(dbFile);
 db.serialize(() => {
+  console.log('[DEBUG]serialize.');
   if (!exists) {
     // TODO: To add memberIds.
     db.run(`CREATE TABLE Activities (
@@ -38,9 +39,10 @@ db.serialize(() => {
 
 app.on('@get-all-activity', (json, ws) => {
   using(db => {
-    const sql = 'select * from activities';
+    const sql = 'select * from Activities';
     db.all(sql, function (err, rows) {
       json.state = rows || [];
+      console.log('[DEBUG]', err);      
       console.log('  >', json);
       ws.send(JSON.stringify(json));
     });
@@ -49,7 +51,7 @@ app.on('@get-all-activity', (json, ws) => {
 
 app.on('@get-activity', (json, ws) => {
   using(db => {
-    const sql = 'select * from activities where id=?';
+    const sql = 'select * from Activities where id=?';
     db.get(sql, json.state.id, function (err, row) {
       json.state = row;
       console.log('  >', json);
@@ -60,8 +62,9 @@ app.on('@get-activity', (json, ws) => {
 
 app.on('@create-activity', (json, ws) => {
   using(db => {
-    const sql = 'insert into activities (name, ownerId) values (?,?,?)';
-    db.run(sql, json.state.name, json.ownerId, function () {
+    const sql = 'insert into Activities (name, ownerId) values (?,?)';
+    db.run(sql, json.state.name, json.ownerId, function (e) {
+      console.log('[DEBUG]', e);
       json.state.id = this.lastID;
       console.log('  >', 'created', json);
       ws.send(JSON.stringify(json));
