@@ -51,9 +51,8 @@ app.on('@get-all-activities', (json, ws) => {
 app.on('@create-activity', (json, ws) => {
   using(db => {
     const sql = 'insert into activities (name, ownerId) values (?,?)';
-    db.run(sql, json.state.title, json.state.done, json.ip, function () {
-      json.state.id = this.lastID;
-      json.state.ip = json.ip;
+    db.run(sql, json.name, json.ownerId, function () {
+      json.activityId = this.lastID;
       console.log('  >', 'created', json);
       ws.send(JSON.stringify(json));
     });
