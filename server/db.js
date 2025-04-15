@@ -16,18 +16,40 @@ console.log('Using database: ', dbFile);
 const db = new sqlite3.Database(dbFile);
 db.serialize(() => {
   if (!exists) {
-    db.run(`CREATE TABLE Todo (
+    db.run(`CREATE TABLE Activities (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT    NOT NULL,
+                ownerId     TEXT    NOT NULL,
+                memberIds:  Text    NOT NULL,
+                started     NUMERIC NOT NULL DEFAULT 0,
+              );`);
+    console.log("New table created!");
+
+    db.run(`CREATE TABLE TODO (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 title       TEXT    NOT NULL,
                 done        NUMERIC NOT NULL DEFAULT 0,
                 ip          VARCHAR(15) NOT NULL,
                 CONSTRAINT Todo_ck_done CHECK (done IN (0, 1))
               );`);
-    console.log("New table created!");
+    console.log("New table created!");    
   }
 });
 
 
+app.on('@get-all-activities', (json, ws) => {
+  using(db => {
+    const sql = 'select * from todo';
+    db.all(sql, function (err, rows) {
+      json.state = rows || [];
+      console.log('  >', json);
+      ws.send(JSON.stringify(json));
+    });
+  });
+});
+
+
+// References from original TODO list app.
 app.on('@get-all-todo', (json, ws) => {
   using(db => {
     const sql = 'select * from todo';
