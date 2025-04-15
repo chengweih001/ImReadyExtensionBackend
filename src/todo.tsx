@@ -32,8 +32,15 @@ const add = () => {
 
 const join = () => {
   app.run('//ws:', '@join-activity', {
-    activityId: (document.getElementById('join_activity') as HTMLInputElement).value,
-    userId: 'fakeid'
+    activityId: (document.getElementById('join_activity_id') as HTMLInputElement).value,
+    userId: (document.getElementById('join_user_id') as HTMLInputElement).value,
+  })
+};
+
+const leave = () => {
+  app.run('//ws:', '@leave-activity', {
+    activityId: (document.getElementById('join_activity_id') as HTMLInputElement).value,
+    userId: (document.getElementById('join_user_id') as HTMLInputElement).value,
   })
 };
 
@@ -78,8 +85,12 @@ const view = (state) => {
       <input placeholder='add todo' onkeyup={keyup} id="new_todo"/>
       <button $onclick={[add]}>Add</button>
       <button $onclick={[clear]}>Clear</button>
-      <input placeholder='id' onkeyup={keyupJoin} id="join_activity"/>
+    </div>      
+    <div>    
+      <input placeholder='activity id' onkeyup={keyupJoin} id="join_activity_id"/>
+      <input placeholder='user id' onkeyup={keyupJoin} id="join_user_id"/>
       <button $onclick={[join]}>Join</button>
+      <button $onclick={[leave]}>Leave</button>
     </div>
   </div>
 }

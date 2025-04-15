@@ -101,6 +101,16 @@ app.on('@join-activity', (json, ws) => {
   });
 });
 
+app.on('@leave-activity', (json, ws) => {
+  using(db => {
+    const sql = 'delete from ActivityMembers where activityId=? and memberId=?';
+    db.run(sql, json.state.activityId, json.state.userId, function () {
+      console.log('  >', 'deleted', json);
+      ws.send(JSON.stringify(json));
+    });
+  });
+});
+
 app.on('@delete-all-activity', (json, ws) => {
   using(db => {
     const deleteActivitiesSql = 'delete from Activities';
