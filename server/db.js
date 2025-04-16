@@ -62,8 +62,8 @@ function broadcastActivityChanged(activityId, wss) {
       // json.state = rows || [];
       console.log('[DEBUG]', err);         
       
-      const activityMembersSql = 'select * from ActivityMembers where';
-      db.all(activityMembersSql, function (err, members) {
+      const activityMembersSql = 'select * from ActivityMembers where activityId=?';
+      db.all(activityMembersSql, activityId, function (err, members) {
         // json.state = rows || [];
         console.log('[DEBUG]ActivityMembers table\n', members);
         
@@ -87,11 +87,11 @@ function broadcastActivityChanged(activityId, wss) {
   });
   
   
-  wss.clients.forEach(function each(client) {
-    if (client.readyState === webSocket.OPEN) {
-      client.send(JSON.stringify(json));
-    }
-  });  
+  // wss.clients.forEach(function each(client) {
+  //   if (client.readyState === webSocket.OPEN) {
+  //     client.send(JSON.stringify(json));
+  //   }
+  // });  
 }
 
 app.on('GetAllActivities', (json, ws) => {
@@ -120,7 +120,7 @@ app.on('GetAllActivities', (json, ws) => {
           memberIds: activityMembersMap[activity.id] || []
         }));        
         
-        json.state = updatedActivities;
+        json.data.activities = updatedActivities;
         console.log('  >', json);
         ws.send(JSON.stringify(json));
       });          
