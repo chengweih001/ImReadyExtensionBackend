@@ -130,7 +130,7 @@ app.on('JoinActivity', (json, ws) => {
   using(db => {
     const sql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
     db.run(sql, json.data.activityId, json.userId, function () {
-      json.state.ip = json.ip;
+      // json.state.ip = json.ip;
       console.log('  >', 'joined', json);
       ws.send(JSON.stringify(json));
     });
@@ -148,32 +148,61 @@ app.on('JoinActivity', (json, ws) => {
 // });
 
 app.on('LeaveActivity', (json, ws) => {
-// app.on('@leave-activity', (json, ws) => {
   using(db => {
     const sql = 'delete from ActivityMembers where activityId=? and memberId=?';
-    db.run(sql, json.state.activityId, json.state.userId, function () {
+    db.run(sql, json.data.activityId, json.userId, function () {
       console.log('  >', 'deleted', json);
       ws.send(JSON.stringify(json));
     });
   });
 });
+// app.on('@leave-activity', (json, ws) => {
+//   using(db => {
+//     const sql = 'delete from ActivityMembers where activityId=? and memberId=?';
+//     db.run(sql, json.state.activityId, json.state.userId, function () {
+//       console.log('  >', 'deleted', json);
+//       ws.send(JSON.stringify(json));
+//     });
+//   });
+// });
 
 
 app.on('StartActivity', (json, ws) => {
-// app.on('@start-activity', (json, ws) => {
   using(db => {
     const deleteActivitiesSql = 'delete from Activities where id=? and ownerId=?';
-    db.run(deleteActivitiesSql, json.state.activityId, json.state.userId, function (err) {
+    db.run(deleteActivitiesSql, json.data.activityId, json.userId, function (err) {
       console.log('[DEBUG]deleteActivitiesSql:', err);
       
       // TODO: Proceed only if sucessfully deleted from Activities table.
       const deleteActivityMembersSql = 'delete from ActivityMembers where activityId=?';
-      db.run(deleteActivityMembersSql, json.state.activityId, function (err) {
+      db.run(deleteActivityMembersSql, json.data.activityId, function (err) {
         console.log('[DEBUG]deleteActivityMembersSql:', err);
         console.log('  >', 'deleted', json);
         ws.send(JSON.stringify(json));        
       });
     });
+  });
+});  
+// app.on('@start-activity', (json, ws) => {
+//   using(db => {
+//     const deleteActivitiesSql = 'delete from Activities where id=? and ownerId=?';
+//     db.run(deleteActivitiesSql, json.state.activityId, json.state.userId, function (err) {
+//       console.log('[DEBUG]deleteActivitiesSql:', err);
+      
+//       // TODO: Proceed only if sucessfully deleted from Activities table.
+//       const deleteActivityMembersSql = 'delete from ActivityMembers where activityId=?';
+//       db.run(deleteActivityMembersSql, json.state.activityId, function (err) {
+//         console.log('[DEBUG]deleteActivityMembersSql:', err);
+//         console.log('  >', 'deleted', json);
+//         ws.send(JSON.stringify(json));        
+//       });
+//     });
+//   });
+// });
+
+app.on('KeepAlive', (json, ws) => {
+  using(db => {
+    ws.send(JSON.stringify({ ...json, type: 'I am alive' }));
   });
 });
 
