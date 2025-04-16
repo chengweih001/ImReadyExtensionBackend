@@ -47,10 +47,30 @@ function broadcast(json, wss) {
   console.log('[DEBUG]broadcast:', json);
   wss.clients.forEach(function each(client) {
     if (client.readyState === webSocket.OPEN) {
-      client.send('broadcast');
+      client.send(JSON.stringify(json));
     }
   });  
 }
+
+// function broadcastActivityChanged(activityId, wss) {
+//   console.log('[DEBUG]broadcastActivityChanged:', activityId);
+
+//   using(db => {
+//     const sql = 'select * from Activities where id=?';
+//     db.get(sql, activityId, function (err, row) {
+//       // json.state = row;
+//       // console.log('  >', json);
+//       ws.send(JSON.stringify(json));
+//     });
+//   });  
+  
+  
+//   wss.clients.forEach(function each(client) {
+//     if (client.readyState === webSocket.OPEN) {
+//       client.send(JSON.stringify(json));
+//     }
+//   });  
+// }
 
 app.on('GetAllActivities', (json, ws) => {
 // app.on('@get-all-activity', (json, ws) => {
@@ -106,7 +126,7 @@ app.on('CreateActivity', (json, ws, wss) => {
           console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.userId });
         }
         ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
-        broadcast({}, wss);
+        broadcast({type: 'ActivityChanged'}, wss);
       });
     });
   });
