@@ -4,6 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs')
 const dbFile = "db/todo.db";
 const exists = fs.existsSync(dbFile);
+const webSocket = require('ws');
 
 function using(fn) {
   const db = new sqlite3.Database(dbFile);
@@ -42,8 +43,13 @@ db.serialize(() => {
   }
 });
 
-function broadcastActivityChanged(ws) {
-  
+function broadcast(json, wss) {
+  console.log('[DEBUG]broadcast:', json);
+  wss.clients.forEach(function each(client) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send('broadcast');
+    }
+  });  
 }
 
 app.on('GetAllActivities', (json, ws) => {
@@ -80,7 +86,7 @@ app.on('GetAllActivities', (json, ws) => {
   });
 });
 
-app.on('CreateActivity', (json, ws) => {
+app.on('CreateActivity', (json, ws, wss) => {
   using(db => {
     const activitySql = 'insert into Activities (name, ownerId) values (?,?)';
     db.run(activitySql, json.data.name, json.userId, function (e) {
@@ -100,6 +106,7 @@ app.on('CreateActivity', (json, ws) => {
           console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.userId });
         }
         ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
+        broadcast({}, wss);
       });
     });
   });
