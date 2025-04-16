@@ -77,45 +77,78 @@ app.on('GetAllActivities', (json, ws) => {
 });
 
 app.on('CreateActivity', (json, ws) => {
-// app.on('@create-activity', (json, ws) => {
   using(db => {
     const activitySql = 'insert into Activities (name, ownerId) values (?,?)';
-    db.run(activitySql, json.state.name, json.state.userId, function (e) {
+    db.run(activitySql, json.data.name, json.userId, function (e) {
       console.log('[DEBUG]', e);
-      json.state.activityId = this.lastID;
+      json.data.activityId = this.lastID;
       console.log('  >', 'created activity', json);
 
       // Now, insert the creator into the ActivityMembers table
       const memberSql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
-      db.run(memberSql, this.lastID, json.state.userId, function (memberError) {
+      db.run(memberSql, this.lastID, json.userId, function (memberError) {
         console.log('[DEBUG]', memberError);
         if (memberError) {
           console.error('Error adding creator to ActivityMembers:', memberError);
           // You might want to handle this error, perhaps by rolling back the Activities insertion
           // or sending an error message to the client.
         } else {
-          console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.state.userId });
+          console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.userId });
         }
         ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
       });
     });
   });
-});
+});  
+  
+// app.on('@create-activity', (json, ws) => {
+//   using(db => {
+//     const activitySql = 'insert into Activities (name, ownerId) values (?,?)';
+//     db.run(activitySql, json.state.name, json.state.userId, function (e) {
+//       console.log('[DEBUG]', e);
+//       json.state.activityId = this.lastID;
+//       console.log('  >', 'created activity', json);
+
+//       // Now, insert the creator into the ActivityMembers table
+//       const memberSql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
+//       db.run(memberSql, this.lastID, json.state.userId, function (memberError) {
+//         console.log('[DEBUG]', memberError);
+//         if (memberError) {
+//           console.error('Error adding creator to ActivityMembers:', memberError);
+//           // You might want to handle this error, perhaps by rolling back the Activities insertion
+//           // or sending an error message to the client.
+//         } else {
+//           console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.state.userId });
+//         }
+//         ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
+//       });
+//     });
+//   });
+// });
 
 app.on('JoinActivity', (json, ws) => {
-// app.on('@join-activity', (json, ws) => {
   using(db => {
     const sql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
-    db.run(sql, json.state.activityId, json.state.userId, function () {
+    db.run(sql, json.data.activityId, json.userId, function () {
       json.state.ip = json.ip;
       console.log('  >', 'joined', json);
       ws.send(JSON.stringify(json));
     });
   });
-});
+});  
+// app.on('@join-activity', (json, ws) => {
+//   using(db => {
+//     const sql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
+//     db.run(sql, json.state.activityId, json.state.userId, function () {
+//       json.state.ip = json.ip;
+//       console.log('  >', 'joined', json);
+//       ws.send(JSON.stringify(json));
+//     });
+//   });
+// });
 
-
-app.on('@leave-activity', (json, ws) => {
+app.on('LeaveActivity', (json, ws) => {
+// app.on('@leave-activity', (json, ws) => {
   using(db => {
     const sql = 'delete from ActivityMembers where activityId=? and memberId=?';
     db.run(sql, json.state.activityId, json.state.userId, function () {
@@ -125,7 +158,9 @@ app.on('@leave-activity', (json, ws) => {
   });
 });
 
-app.on('@start-activity', (json, ws) => {
+
+app.on('StartActivity', (json, ws) => {
+// app.on('@start-activity', (json, ws) => {
   using(db => {
     const deleteActivitiesSql = 'delete from Activities where id=? and ownerId=?';
     db.run(deleteActivitiesSql, json.state.activityId, json.state.userId, function (err) {
