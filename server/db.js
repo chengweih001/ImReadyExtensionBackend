@@ -42,6 +42,10 @@ db.serialize(() => {
   }
 });
 
+function broadcastActivityChanged(ws) {
+  
+}
+
 app.on('GetAllActivities', (json, ws) => {
 // app.on('@get-all-activity', (json, ws) => {
   using(db => {
