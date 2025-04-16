@@ -22,7 +22,8 @@ wss.on('connection', function (ws, req) {
       const json = JSON.parse(data);
       json.ip = ip;
       console.log('==>', json);
-      apprun.run(json.event, json, ws);
+      apprun.run(json.type, json, ws);
+      // apprun.run(json.event, json, ws);
     } catch (e) {
       ws.send(e.toString());
       console.error(e);

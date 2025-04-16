@@ -42,8 +42,8 @@ db.serialize(() => {
   }
 });
 
-
-app.on('@get-all-activity', (json, ws) => {
+app.on('GetAllActivities', (json, ws) => {
+// app.on('@get-all-activity', (json, ws) => {
   using(db => {
     const sql = 'select * from Activities';
     db.all(sql, function (err, activities) {
@@ -76,7 +76,8 @@ app.on('@get-all-activity', (json, ws) => {
   });
 });
 
-app.on('@create-activity', (json, ws) => {
+app.on('CreateActivity', (json, ws) => {
+// app.on('@create-activity', (json, ws) => {
   using(db => {
     const activitySql = 'insert into Activities (name, ownerId) values (?,?)';
     db.run(activitySql, json.state.name, json.state.userId, function (e) {
@@ -101,7 +102,8 @@ app.on('@create-activity', (json, ws) => {
   });
 });
 
-app.on('@join-activity', (json, ws) => {
+app.on('JoinActivity', (json, ws) => {
+// app.on('@join-activity', (json, ws) => {
   using(db => {
     const sql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
     db.run(sql, json.state.activityId, json.state.userId, function () {
@@ -111,6 +113,7 @@ app.on('@join-activity', (json, ws) => {
     });
   });
 });
+
 
 app.on('@leave-activity', (json, ws) => {
   using(db => {
