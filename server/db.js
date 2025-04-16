@@ -46,7 +46,7 @@ db.serialize(() => {
 function broadcast(json, wss) {
   console.log('[DEBUG]broadcast:', json);
   wss.clients.forEach(function each(client) {
-    if (client.readyState === WebSocket.OPEN) {
+    if (client.readyState === webSocket.OPEN) {
       client.send('broadcast');
     }
   });  
