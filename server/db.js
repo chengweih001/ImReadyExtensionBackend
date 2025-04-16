@@ -52,25 +52,47 @@ function broadcast(json, wss) {
   });  
 }
 
-// function broadcastActivityChanged(activityId, wss) {
-//   console.log('[DEBUG]broadcastActivityChanged:', activityId);
+function broadcastActivityChanged(activityId, wss) {
+  console.log('[DEBUG]broadcastActivityChanged:', activityId);
 
-//   using(db => {
-//     const sql = 'select * from Activities where id=?';
-//     db.get(sql, activityId, function (err, row) {
-//       // json.state = row;
-//       // console.log('  >', json);
-//       ws.send(JSON.stringify(json));
-//     });
-//   });  
+  using(db => {
+    const sql = 'select * from Activities where id=?';
+    db.all(sql, activityId, function (err, activities) {
+      console.log('[DEBUG]Activities table\n', activities);            
+      // json.state = rows || [];
+      console.log('[DEBUG]', err);         
+      
+      const activityMembersSql = 'select * from ActivityMembers where';
+      db.all(activityMembersSql, function (err, members) {
+        // json.state = rows || [];
+        console.log('[DEBUG]ActivityMembers table\n', members);
+        
+        const activityMembersMap = {};
+        members.forEach(member => {
+          if (!activityMembersMap[member.activityId]) {
+            activityMembersMap[member.activityId] = [];
+          }
+          activityMembersMap[member.activityId].push(member.memberId);
+        });        
+        const updatedActivities = activities.map(activity => ({
+          ...activity,
+          memberIds: activityMembersMap[activity.id] || []
+        }));        
+        
+        // json.state = updatedActivities;
+        // console.log('  >', json);
+        // ws.send(JSON.stringify(json));
+      });          
+    });
+  });
   
   
-//   wss.clients.forEach(function each(client) {
-//     if (client.readyState === webSocket.OPEN) {
-//       client.send(JSON.stringify(json));
-//     }
-//   });  
-// }
+  wss.clients.forEach(function each(client) {
+    if (client.readyState === webSocket.OPEN) {
+      client.send(JSON.stringify(json));
+    }
+  });  
+}
 
 app.on('GetAllActivities', (json, ws) => {
 // app.on('@get-all-activity', (json, ws) => {
