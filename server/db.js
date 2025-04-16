@@ -126,7 +126,7 @@ app.on('CreateActivity', (json, ws, wss) => {
           console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.userId });
         }
         ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
-        broadcast({type: 'ActivityChanged'}, wss);
+        // broadcast({type: 'ActivityChanged'}, wss);
       });
     });
   });
