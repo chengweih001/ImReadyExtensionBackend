@@ -51,17 +51,17 @@ app.on('@get-all-activity', (json, ws) => {
       json.state = rows || [];
       console.log('[DEBUG]', err);         
       console.log('  >', json);
+      
+      const activityMembersSql = 'select * from ActivityMembers';
+      db.all(activityMembersSql, function (err, rows) {
+        // json.state = rows || [];
+        console.log('[DEBUG]ActivityMembers table\n', rows);      
+        console.log('  >', json);
+        ws.send(JSON.stringify(json));
+      });          
+      
       ws.send(JSON.stringify(json));
     });
-    
-    // TODO: debugging purpose
-    const activityMembersSql = 'select * from ActivityMembers';
-    db.all(activityMembersSql, function (err, rows) {
-      // json.state = rows || [];
-      console.log('[DEBUG]ActivityMembers table\n', rows);      
-      // console.log('  >', json);
-      // ws.send(JSON.stringify(json));
-    });    
   });
 });
 
