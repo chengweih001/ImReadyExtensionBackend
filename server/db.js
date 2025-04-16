@@ -46,21 +46,32 @@ db.serialize(() => {
 app.on('@get-all-activity', (json, ws) => {
   using(db => {
     const sql = 'select * from Activities';
-    db.all(sql, function (err, rows) {
-      console.log('[DEBUG]Activities table\n', rows);            
-      json.state = rows || [];
+    db.all(sql, function (err, activities) {
+      console.log('[DEBUG]Activities table\n', activities);            
+      // json.state = rows || [];
       console.log('[DEBUG]', err);         
-      console.log('  >', json);
       
       const activityMembersSql = 'select * from ActivityMembers';
-      db.all(activityMembersSql, function (err, rows) {
+      db.all(activityMembersSql, function (err, members) {
         // json.state = rows || [];
-        console.log('[DEBUG]ActivityMembers table\n', rows);      
+        console.log('[DEBUG]ActivityMembers table\n', members);
+        
+        const activityMembersMap = {};
+        members.forEach(member => {
+          if (!activityMembersMap[member.activityId]) {
+            activityMembersMap[member.activityId] = [];
+          }
+          activityMembersMap[member.activityId].push(member.memberId);
+        });        
+        const updatedActivities = activities.map(activity => ({
+          ...activity,
+          memberIds: activityMembersMap[activity.id] || []
+        }));        
+        
+        json.state = updatedActivities;
         console.log('  >', json);
         ws.send(JSON.stringify(json));
       });          
-      
-      ws.send(JSON.stringify(json));
     });
   });
 });

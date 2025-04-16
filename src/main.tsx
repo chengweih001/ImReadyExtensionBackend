@@ -5,7 +5,7 @@ import todo from './todo';
 const ws = new WebSocket(`wss://${location.host}`);
 ws.onmessage = function (msg) {
   const {event, state} = JSON.parse(msg.data);
-  console.log('[DEBUG]ws.onmessage:', msg);
+  console.log('[DEBUG]ws.onmessage:', JSON.parse(msg.data));
   app.run(event, state);
 }
 
