@@ -242,7 +242,7 @@ app.on('StartActivity', (json, ws, wss) => {
         console.log('[DEBUG]deleteActivityMembersSql:', err);
         console.log('  >', 'deleted', json);
         ws.send(JSON.stringify(json));
-        broadcastActivityDeleted(json.data.activityId);
+        broadcastActivityDeleted(json.data.activityId, wss);
       });
     });
   });
