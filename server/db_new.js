@@ -96,14 +96,14 @@ async function broadcastActivityChanged(activityId, wss) {
       'SELECT * FROM Activities WHERE id = ?',
       [activityId]
     );
-    console.log('[DEBUG] Activities found:', activities);
+    console.log('[DEBUG] Activities found:', JSON.stringify(activities));
 
     if (activities.length > 0) {
       const members = await executeDatabaseAll(
         'SELECT activityId, memberId FROM ActivityMembers WHERE activityId = ?',
         [activityId]
       );
-      console.log('[DEBUG] Activity members found:', members);
+      console.log('[DEBUG] Activity members found:', JSON.stringify(members));
 
       const memberIds = members.map(member => member.memberId);
       const updatedActivity = { ...activities[0], memberIds };
@@ -135,7 +135,7 @@ app.on('GetAllActivities', async (json, ws) => {
     }));
 
     const response = { ...json, data: { activities: activitiesWithMembers } };
-    console.log('[DEBUG] Sending GetAllActivities response:', response);
+    console.log('[DEBUG] Sending GetAllActivities response:', JSON.stringify(response));
     ws.send(JSON.stringify(response));
   } catch (error) {
     console.error('Error fetching all activities:', error);
@@ -228,8 +228,8 @@ app.on('StartActivity', async (json, ws, wss) => {
 });
 
 app.on('KeepAlive', (json, ws) => {
-  console.log('[DEBUG] Handling KeepAlive');
-  ws.send(JSON.stringify({ ...json, type: 'I am alive' }));
+  // console.log('[DEBUG] Handling KeepAlive');
+  // ws.send(JSON.stringify({ ...json, type: 'I am alive' }));
 });
 
 app.on('@delete-all-activity', async (json, ws) => {

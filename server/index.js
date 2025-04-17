@@ -21,7 +21,7 @@ wss.on('connection', function (ws, req) {
     try {
       const json = JSON.parse(data);
       json.ip = ip;
-      console.log('==>', json);
+      // console.log('==>', json);
       apprun.run(json.type, json, ws, wss);
       // apprun.run(json.event, json, ws);
     } catch (e) {
