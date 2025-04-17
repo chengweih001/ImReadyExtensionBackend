@@ -1,7 +1,7 @@
 'use strict';
 
 const apprun = require('apprun').app;
-require('./db_new');
+require('./db');
 
 const express = require('express');
 const path = require('path');
@@ -21,9 +21,7 @@ wss.on('connection', function (ws, req) {
     try {
       const json = JSON.parse(data);
       json.ip = ip;
-      // console.log('==>', json);
       apprun.run(json.type, json, ws, wss);
-      // apprun.run(json.event, json, ws);
     } catch (e) {
       ws.send(e.toString());
       console.error(e);

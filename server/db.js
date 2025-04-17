@@ -1,353 +1,260 @@
 // @ts-check
 const app = require('apprun').app;
 const sqlite3 = require('sqlite3').verbose();
-const fs = require('fs')
-const dbFile = "db/todo.db";
-const exists = fs.existsSync(dbFile);
+const fs = require('fs');
 const webSocket = require('ws');
 
-function using(fn) {
-  const db = new sqlite3.Database(dbFile);
-  fn(db);
-  db.close();
-}
+const DATABASE_FILE = "db/activities.db";
+const databaseExists = fs.existsSync(DATABASE_FILE);
 
-console.log('Using database: ', dbFile);
+console.log('Using database: ', DATABASE_FILE);
 
-const db = new sqlite3.Database(dbFile);
-db.serialize(() => {
-  console.log('[DEBUG]serialize. exists:', exists);
-  if (!exists) {
-    // TODO: To add memberIds.
-    db.run(`CREATE TABLE Activities (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                name        TEXT    NOT NULL,
-                ownerId     TEXT    NOT NULL
-              );`);
-    db.run(`CREATE TABLE ActivityMembers (
-                activityId INTEGER NOT NULL,
-                memberId TEXT NOT NULL,
-                PRIMARY KEY (activityId, memberId),
-                FOREIGN KEY (activityId) REFERENCES Activities(id)
-              );`);    
-    console.log("Activities table created!");
-
-    db.run(`CREATE TABLE TODO (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                title       TEXT    NOT NULL,
-                done        NUMERIC NOT NULL DEFAULT 0,
-                ip          VARCHAR(15) NOT NULL,
-                CONSTRAINT Todo_ck_done CHECK (done IN (0, 1))
-              );`);
-    console.log("New table created!");    
+// Initialize the database connection
+const db = new sqlite3.Database(DATABASE_FILE, (err) => {
+  if (err) {
+    console.error('Failed to connect to the database:', err.message);
+  } else {
+    console.log('Successfully connected to the database.');
+    initializeDatabase();
   }
 });
 
-function broadcastActivityDeleted(activityId, wss) {
-  console.log('[DEBUG]broadcastActivityDeleted:', activityId);
-  wss.clients.forEach(function each(client) {
-    if (client.readyState === webSocket.OPEN) {
-      client.send(JSON.stringify({type: 'ActivityDeleted', data: {activityId}}));
+// Function to handle database operations and automatically close the connection
+function executeDatabaseQuery(query, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(query, params, function (err) {
+      if (err) {
+        console.error('Database query failed:', err.message, query, params);
+        reject(err);
+      } else {
+        resolve(this); // 'this' context contains lastID and changes
+      }
+    });
+  });
+}
+
+function executeDatabaseAll(query, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(query, params, (err, rows) => {
+      if (err) {
+        console.error('Database query (all) failed:', err.message, query, params);
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
+// Function to initialize the database tables if they don't exist
+function initializeDatabase() {
+  db.serialize(async () => {
+    console.log('[DEBUG] Checking database schema. Exists:', databaseExists);
+    if (!databaseExists) {
+      await executeDatabaseQuery(`
+        CREATE TABLE Activities (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          ownerId TEXT NOT NULL
+        );
+      `);
+      console.log("Activities table created!");
+
+      await executeDatabaseQuery(`
+        CREATE TABLE ActivityMembers (
+          activityId INTEGER NOT NULL,
+          memberId TEXT NOT NULL,
+          PRIMARY KEY (activityId, memberId),
+          FOREIGN KEY (activityId) REFERENCES Activities(id)
+        );
+      `);
+      console.log("ActivityMembers table created!");
     }
-  });  
+  });
 }
 
-function broadcastActivityChanged(activityId, wss) {
-  console.log('[DEBUG]broadcastActivityChanged:', activityId);
+// --- WebSocket Broadcast Functions ---
 
-  using(db => {
-    const sql = 'select * from Activities where id=?';
-    db.all(sql, activityId, function (err, activities) {
-      console.log('[DEBUG]Activities table\n', activities);            
-      // json.state = rows || [];
-      console.log('[DEBUG]', err);         
-      
-      const activityMembersSql = 'select * from ActivityMembers where activityId=?';
-      db.all(activityMembersSql, activityId, function (err, members) {
-        // json.state = rows || [];
-        console.log('[DEBUG]ActivityMembers table\n', members);
-        
-        const activityMembersMap = {};
-        members.forEach(member => {
-          if (!activityMembersMap[member.activityId]) {
-            activityMembersMap[member.activityId] = [];
-          }
-          activityMembersMap[member.activityId].push(member.memberId);
-        });        
-        const updatedActivities = activities.map(activity => ({
-          ...activity,
-          memberIds: activityMembersMap[activity.id] || []
-        }));
-        
-        // TODO: It is supposed to be more than 0.
-        if (updatedActivities.length > 0) {
-          wss.clients.forEach(function each(client) {
-            if (client.readyState === webSocket.OPEN) {
-              client.send(JSON.stringify({type: 'ActivityChanged', data: {activity: updatedActivities[0]}}));
-            }
-          });          
-        }
-        
-        // json.state = updatedActivities;
-        // console.log('  >', json);
-        // ws.send(JSON.stringify(json));
-      });          
-    });
+function broadcast(wss, message) {
+  wss.clients.forEach(client => {
+    if (client.readyState === webSocket.OPEN) {
+      client.send(JSON.stringify(message));
+    }
   });
-  
-  
-  // wss.clients.forEach(function each(client) {
-  //   if (client.readyState === webSocket.OPEN) {
-  //     client.send(JSON.stringify(json));
-  //   }
-  // });  
 }
 
-app.on('GetAllActivities', (json, ws) => {
-// app.on('@get-all-activity', (json, ws) => {
-  using(db => {
-    const sql = 'select * from Activities';
-    db.all(sql, function (err, activities) {
-      console.log('[DEBUG]Activities table\n', activities);            
-      // json.state = rows || [];
-      console.log('[DEBUG]', err);         
-      
-      const activityMembersSql = 'select * from ActivityMembers';
-      db.all(activityMembersSql, function (err, members) {
-        // json.state = rows || [];
-        console.log('[DEBUG]ActivityMembers table\n', members);
-        
-        const activityMembersMap = {};
-        members.forEach(member => {
-          if (!activityMembersMap[member.activityId]) {
-            activityMembersMap[member.activityId] = [];
-          }
-          activityMembersMap[member.activityId].push(member.memberId);
-        });        
-        const updatedActivities = activities.map(activity => ({
-          ...activity,
-          memberIds: activityMembersMap[activity.id] || []
-        }));        
-        
-        json.data.activities = updatedActivities;
-        console.log('  >', json);
-        ws.send(JSON.stringify(json));
-      });          
-    });
-  });
+function broadcastActivityDeleted(activityId, wss) {
+  console.log('[DEBUG] Broadcasting ActivityDeleted:', activityId);
+  broadcast(wss, { type: 'ActivityDeleted', data: { activityId } });
+}
+
+async function broadcastActivityChanged(activityId, wss) {
+  console.log('[DEBUG] Broadcasting ActivityChanged for ID:', activityId);
+
+  try {
+    const activities = await executeDatabaseAll(
+      'SELECT * FROM Activities WHERE id = ?',
+      [activityId]
+    );
+    console.log('[DEBUG] Activities found:', JSON.stringify(activities));
+
+    if (activities.length > 0) {
+      const members = await executeDatabaseAll(
+        'SELECT activityId, memberId FROM ActivityMembers WHERE activityId = ?',
+        [activityId]
+      );
+      console.log('[DEBUG] Activity members found:', JSON.stringify(members));
+
+      const memberIds = members.map(member => member.memberId);
+      const updatedActivity = { ...activities[0], memberIds };
+
+      broadcast(wss, { type: 'ActivityChanged', data: { activity: updatedActivity } });
+    }
+  } catch (error) {
+    console.error('Error during broadcastActivityChanged:', error);
+  }
+}
+
+// --- AppRun Event Handlers ---
+
+app.on('GetAllActivities', async (json, ws) => {
+  console.log('[DEBUG] Handling GetAllActivities');
+  try {
+    const activities = await executeDatabaseAll('SELECT id, name, ownerId FROM Activities');
+    const members = await executeDatabaseAll('SELECT activityId, memberId FROM ActivityMembers');
+
+    const activityMembersMap = members.reduce((acc, member) => {
+      acc[member.activityId] = acc[member.activityId] || [];
+      acc[member.activityId].push(member.memberId);
+      return acc;
+    }, {});
+
+    const activitiesWithMembers = activities.map(activity => ({
+      ...activity,
+      memberIds: activityMembersMap[activity.id] || []
+    }));
+
+    const response = { ...json, data: { activities: activitiesWithMembers } };
+    console.log('[DEBUG] Sending GetAllActivities response:', JSON.stringify(response));
+    ws.send(JSON.stringify(response));
+  } catch (error) {
+    console.error('Error fetching all activities:', error);
+    ws.send(JSON.stringify({ ...json, error: 'Failed to fetch activities' }));
+  }
 });
 
-app.on('CreateActivity', (json, ws, wss) => {
-  using(db => {
-    const activitySql = 'insert into Activities (name, ownerId) values (?,?)';
-    db.run(activitySql, json.data.name, json.userId, function (e) {
-      console.log('[DEBUG]', e);
-      const activityId = this.lastID;
-      json.data.activityId = activityId;
-      console.log('  >', 'created activity', json);
+app.on('CreateActivity', async (json, ws, wss) => {
+  console.log('[DEBUG] Handling CreateActivity:', json);
+  try {
+    const activityResult = await executeDatabaseQuery(
+      'INSERT INTO Activities (name, ownerId) VALUES (?, ?)',
+      [json.data.name, json.userId]
+    );
+    const activityId = activityResult.lastID;
+    console.log('[DEBUG] Created activity with ID:', activityId);
 
-      // Now, insert the creator into the ActivityMembers table
-      const memberSql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
-      db.run(memberSql, activityId, json.userId, function (memberError) {
-        console.log('[DEBUG]', memberError);
-        if (memberError) {
-          console.error('Error adding creator to ActivityMembers:', memberError);
-          // You might want to handle this error, perhaps by rolling back the Activities insertion
-          // or sending an error message to the client.
-        } else {
-          console.log('  >', 'added creator to ActivityMembers', { activityId, userId: json.userId });
-        }
-        ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
-        broadcastActivityChanged(activityId, wss);
-      });
-    });
-  });
-});  
-  
-// app.on('@create-activity', (json, ws) => {
-//   using(db => {
-//     const activitySql = 'insert into Activities (name, ownerId) values (?,?)';
-//     db.run(activitySql, json.state.name, json.state.userId, function (e) {
-//       console.log('[DEBUG]', e);
-//       json.state.activityId = this.lastID;
-//       console.log('  >', 'created activity', json);
+    await executeDatabaseQuery(
+      'INSERT INTO ActivityMembers (activityId, memberId) VALUES (?, ?)',
+      [activityId, json.userId]
+    );
+    console.log('[DEBUG] Added creator to ActivityMembers for activity ID:', activityId, 'user ID:', json.userId);
 
-//       // Now, insert the creator into the ActivityMembers table
-//       const memberSql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
-//       db.run(memberSql, this.lastID, json.state.userId, function (memberError) {
-//         console.log('[DEBUG]', memberError);
-//         if (memberError) {
-//           console.error('Error adding creator to ActivityMembers:', memberError);
-//           // You might want to handle this error, perhaps by rolling back the Activities insertion
-//           // or sending an error message to the client.
-//         } else {
-//           console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.state.userId });
-//         }
-//         ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
-//       });
-//     });
-//   });
-// });
+    const response = { ...json, data: { activityId } };
+    ws.send(JSON.stringify(response));
+    broadcastActivityChanged(activityId, wss);
 
-app.on('JoinActivity', (json, ws) => {
-  using(db => {
-    const sql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
-    db.run(sql, json.data.activityId, json.userId, function () {
-      // json.state.ip = json.ip;
-      console.log('  >', 'joined', json);
-      ws.send(JSON.stringify(json));
-    });
-  });
-});  
-// app.on('@join-activity', (json, ws) => {
-//   using(db => {
-//     const sql = 'insert into ActivityMembers (activityId, memberId) values (?,?)';
-//     db.run(sql, json.state.activityId, json.state.userId, function () {
-//       json.state.ip = json.ip;
-//       console.log('  >', 'joined', json);
-//       ws.send(JSON.stringify(json));
-//     });
-//   });
-// });
-
-app.on('LeaveActivity', (json, ws) => {
-  using(db => {
-    const sql = 'delete from ActivityMembers where activityId=? and memberId=?';
-    db.run(sql, json.data.activityId, json.userId, function () {
-      console.log('  >', 'deleted', json);
-      ws.send(JSON.stringify(json));
-    });
-  });
+  } catch (error) {
+    console.error('Error creating activity:', error);
+    ws.send(JSON.stringify({ ...json, error: 'Failed to create activity' }));
+  }
 });
-// app.on('@leave-activity', (json, ws) => {
-//   using(db => {
-//     const sql = 'delete from ActivityMembers where activityId=? and memberId=?';
-//     db.run(sql, json.state.activityId, json.state.userId, function () {
-//       console.log('  >', 'deleted', json);
-//       ws.send(JSON.stringify(json));
-//     });
-//   });
-// });
 
+app.on('JoinActivity', async (json, ws, wss) => {
+  console.log('[DEBUG] Handling JoinActivity:', json);
+  try {
+    await executeDatabaseQuery(
+      'INSERT INTO ActivityMembers (activityId, memberId) VALUES (?, ?)',
+      [json.data.activityId, json.userId]
+    );
+    console.log('[DEBUG] User joined activity:', json.userId, json.data.activityId);
+    ws.send(JSON.stringify(json));
+    broadcastActivityChanged(json.data.activityId, wss);    
+  } catch (error) {
+    console.error('Error joining activity:', error);
+    ws.send(JSON.stringify({ ...json, error: 'Failed to join activity' }));
+  }
+});
 
-app.on('StartActivity', (json, ws, wss) => {
-  using(db => {
-    const deleteActivitiesSql = 'delete from Activities where id=? and ownerId=?';
-    db.run(deleteActivitiesSql, json.data.activityId, json.userId, function (err) {
-      console.log('[DEBUG]deleteActivitiesSql:', err);
-      
-      // TODO: Proceed only if sucessfully deleted from Activities table.
-      const deleteActivityMembersSql = 'delete from ActivityMembers where activityId=?';
-      db.run(deleteActivityMembersSql, json.data.activityId, function (err) {
-        console.log('[DEBUG]deleteActivityMembersSql:', err);
-        console.log('  >', 'deleted', json);
-        ws.send(JSON.stringify(json));
-        broadcastActivityDeleted(json.data.activityId, wss);
-      });
-    });
-  });
-});  
-// app.on('@start-activity', (json, ws) => {
-//   using(db => {
-//     const deleteActivitiesSql = 'delete from Activities where id=? and ownerId=?';
-//     db.run(deleteActivitiesSql, json.state.activityId, json.state.userId, function (err) {
-//       console.log('[DEBUG]deleteActivitiesSql:', err);
-      
-//       // TODO: Proceed only if sucessfully deleted from Activities table.
-//       const deleteActivityMembersSql = 'delete from ActivityMembers where activityId=?';
-//       db.run(deleteActivityMembersSql, json.state.activityId, function (err) {
-//         console.log('[DEBUG]deleteActivityMembersSql:', err);
-//         console.log('  >', 'deleted', json);
-//         ws.send(JSON.stringify(json));        
-//       });
-//     });
-//   });
-// });
+app.on('LeaveActivity', async (json, ws, wss) => {
+  console.log('[DEBUG] Handling LeaveActivity:', json);
+  try {
+    const result = await executeDatabaseQuery(
+      'DELETE FROM ActivityMembers WHERE activityId = ? AND memberId = ?',
+      [json.data.activityId, json.userId]
+    );
+    console.log('[DEBUG] User left activity. Rows affected:', result.changes);
+    ws.send(JSON.stringify(json));
+    broadcastActivityChanged(json.data.activityId, wss);        
+  } catch (error) {
+    console.error('Error leaving activity:', error);
+    ws.send(JSON.stringify({ ...json, error: 'Failed to leave activity' }));
+  }
+});
+
+app.on('StartActivity', async (json, ws, wss) => {
+  console.log('[DEBUG] Handling StartActivity (Delete Activity):', json);
+  try {
+    const deleteActivityResult = await executeDatabaseQuery(
+      'DELETE FROM Activities WHERE id = ? AND ownerId = ?',
+      [json.data.activityId, json.userId]
+    );
+    console.log('[DEBUG] Deleted activity. Rows affected:', deleteActivityResult.changes);
+
+    if (deleteActivityResult.changes > 0) {
+      const deleteMembersResult = await executeDatabaseQuery(
+        'DELETE FROM ActivityMembers WHERE activityId = ?',
+        [json.data.activityId]
+      );
+      console.log('[DEBUG] Deleted activity members. Rows affected:', deleteMembersResult.changes);
+      ws.send(JSON.stringify(json));
+      broadcastActivityDeleted(json.data.activityId, wss);
+    } else {
+      const errorMessage = 'Activity not found or you are not the owner.';
+      console.warn('[DEBUG]', errorMessage);
+      ws.send(JSON.stringify({ ...json, error: errorMessage }));
+    }
+  } catch (error) {
+    console.error('Error starting (deleting) activity:', error);
+    ws.send(JSON.stringify({ ...json, error: 'Failed to start (delete) activity' }));
+  }
+});
 
 app.on('KeepAlive', (json, ws) => {
-  using(db => {
-    ws.send(JSON.stringify({ ...json, type: 'I am alive' }));
-  });
+  // console.log('[DEBUG] Handling KeepAlive');
+  // ws.send(JSON.stringify({ ...json, type: 'I am alive' }));
 });
 
-app.on('@delete-all-activity', (json, ws) => {
-  using(db => {
-    const deleteActivitiesSql = 'delete from Activities';
-    db.run(deleteActivitiesSql, function (err) {
-      console.log('[DEBUG]deleteActivitiesSql:', err);
-      
-      const deleteActivityMembersSql = 'delete from ActivityMembers';
-      db.run(deleteActivityMembersSql, function (err) {
-        console.log('[DEBUG]deleteActivityMembersSql:', err);
-        console.log('  >', 'deleted all', json);
-        ws.send(JSON.stringify(json));        
-      });
-    });
-  });
+app.on('@delete-all-activity', async (json, ws) => {
+  console.log('[DEBUG] Handling DeleteAllActivities');
+  try {
+    await executeDatabaseQuery('DELETE FROM Activities');
+    console.log('[DEBUG] Deleted all activities.');
+    await executeDatabaseQuery('DELETE FROM ActivityMembers');
+    console.log('[DEBUG] Deleted all activity members.');
+    ws.send(JSON.stringify(json));
+  } catch (error) {
+    console.error('Error deleting all activities:', error);
+    ws.send(JSON.stringify({ ...json, error: 'Failed to delete all activities' }));
+  }
 });
 
-// References from original TODO list app.
-app.on('@get-all-todo', (json, ws) => {
-  using(db => {
-    const sql = 'select * from todo';
-    db.all(sql, function (err, rows) {
-      json.state = rows || [];
-      console.log('  >', json);
-      ws.send(JSON.stringify(json));
-    });
-  });
-});
-
-app.on('@get-todo', (json, ws) => {
-  using(db => {
-    const sql = 'select * from todo where id=?';
-    db.get(sql, json.state.id, function (err, row) {
-      json.state = row;
-      console.log('  >', json);
-      ws.send(JSON.stringify(json));
-    });
-  });
-});
-
-app.on('@create-todo', (json, ws) => {
-  using(db => {
-    const sql = 'insert into todo (title, done, ip) values (?,?,?)';
-    db.run(sql, json.state.title, json.state.done, json.ip, function () {
-      json.state.id = this.lastID;
-      json.state.ip = json.ip;
-      console.log('  >', 'created', json);
-      ws.send(JSON.stringify(json));
-    });
-  });
-});
-
-app.on('@update-todo', (json, ws) => {
-  using(db => {
-    const sql = 'update todo set title=?, done=?, ip=? where id=?';
-    db.run(sql, json.state.title, json.state.done, json.ip, json.state.id, function () {
-      json.state.ip = json.ip;
-      console.log('  >', 'updated', json);
-      ws.send(JSON.stringify(json));
-    });
-  });
-});
-
-app.on('@delete-todo', (json, ws) => {
-  using(db => {
-    const sql = 'delete from todo where id=?';
-    db.run(sql, json.state.id, function () {
-      console.log('  >', 'deleted', json);
-      ws.send(JSON.stringify(json));
-    });
-  });
-});
-
-app.on('@delete-all-todo', (json, ws) => {
-  using(db => {
-    const sql = 'delete from todo';
-    db.run(sql, function () {
-      console.log('  >', 'deleted all', json);
-      ws.send(JSON.stringify(json));
-    });
+// Close the database connection when the Node.js process exits
+process.on('exit', () => {
+  db.close((err) => {
+    if (err) {
+      console.error('Error closing the database:', err.message);
+    } else {
+      console.log('Database connection closed.');
+    }
   });
 });
