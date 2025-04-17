@@ -1,15 +1,226 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AppRun WebSocket SQLite</title>
-  <style>
-    body {font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial; padding-left: 100px;}
-    a {text-decoration: none;} li {list-style: none;}
-  </style>
+    <title>Activity Tracker Frontend (WebSocket)</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        h2 { margin-top: 2em; }
+        #activities-list { margin-top: 10px; border: 1px solid #ccc; padding: 10px; }
+        .activity-item { margin-bottom: 5px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], input[type="number"] { width: 300px; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        button { padding: 10px 15px; cursor: pointer; margin-right: 10px; }
+        #message { margin-top: 15px; font-weight: bold; }
+    </style>
 </head>
 <body>
-  <script src="dist/app.js"></script>
+    <h1>Activity Tracker (WebSocket)</h1>
+
+    <div id="message"></div>
+
+    <h2>Get All Activities</h2>
+    <button onclick="sendGetAllActivities()">Fetch Activities</button>
+    <div id="activities-list"></div>
+
+    <h2>Create New Activity</h2>
+    <label for="create-name">Name:</label>
+    <input type="text" id="create-name" placeholder="Activity Name"><br>
+    <label for="create-owner">Your User ID:</label>
+    <input type="text" id="create-owner" value="testUser" placeholder="Your User ID"><br>
+    <button onclick="sendCreateActivity()">Create Activity</button>
+
+    <h2>Join Activity</h2>
+    <label for="join-activity-id">Activity ID:</label>
+    <input type="number" id="join-activity-id" placeholder="Activity ID"><br>
+    <label for="join-user-id">Your User ID:</label>
+    <input type="text" id="join-user-id" value="testUser" placeholder="Your User ID (e.g., testUser)"><br>
+    <button onclick="sendJoinActivity()">Join Activity</button>
+
+    <h2>Leave Activity</h2>
+    <label for="leave-activity-id">Activity ID:</label>
+    <input type="number" id="leave-activity-id" placeholder="Activity ID"><br>
+    <label for="leave-user-id">Your User ID:</label>
+    <input type="text" id="leave-user-id" value="testUser" placeholder="Your User ID (e.g., testUser)"><br>
+    <button onclick="sendLeaveActivity()">Leave Activity</button>
+
+    <h2>Start (Delete) Activity</h2>
+    <label for="start-activity-id">Activity ID to Delete:</label>
+    <input type="number" id="start-activity-id" placeholder="Activity ID"><br>
+    <label for="start-user-id">Your User ID (Owner):</label>
+    <input type="text" id="start-user-id" value="testUser" placeholder="Your User ID (Owner)"><br>
+    <button onclick="sendStartActivity()">Start Activity</button>
+
+    <script>
+        const websocketUrl = 'wss://2025-capability-hackathon-im-ready-extension-backend.glitch.me/'; // Adjust if your WebSocket server runs on a different URL/port
+        let websocket;
+
+        function connectWebSocket() {
+            websocket = new WebSocket(websocketUrl);
+
+            websocket.onopen = () => {
+                setMessage('WebSocket connection established.', 'green');
+                // Optionally, send an initial message upon connection
+                // websocket.send(JSON.stringify({ type: 'IdentifyClient', userId: 'testFrontend' }));
+            };
+
+            websocket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    console.log('Received message:', message);
+                    handleWebSocketMessage(message);
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error, event.data);
+                }
+            };
+
+            websocket.onclose = () => {
+                setMessage('WebSocket connection closed.', 'orange');
+                // Optionally, attempt to reconnect after a delay
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            websocket.onerror = (error) => {
+                setMessage(`WebSocket error: ${error}`, 'red');
+            };
+        }
+
+        function handleWebSocketMessage(message) {
+            switch (message.type) {
+                case 'GetAllActivities':
+                    if (message.data && message.data.activities) {
+                        displayActivities(message.data.activities);
+                    } else if (message.error) {
+                        setMessage(`Error fetching activities: ${message.error}`, 'red');
+                    } else {
+                        setMessage('No activities found.', 'orange');
+                    }
+                    break;
+                case 'ActivityCreated':
+                    setMessage(`Activity "${message.data.name}" created with ID: ${message.data.activityId}.`, 'green');
+                    sendGetAllActivities(); // Refresh the list
+                    break;
+                case 'ActivityChanged':
+                    setMessage(`Activity ${message.data.activity.id} updated.`, 'blue');
+                    sendGetAllActivities(); // Refresh the list
+                    break;
+                case 'ActivityDeleted':
+                    setMessage(`Activity ${message.data.activityId} deleted.`, 'orange');
+                    sendGetAllActivities(); // Refresh the list
+                    break;
+                // Handle other message types if your backend sends them
+                default:
+                    console.log('Unknown WebSocket message type:', message);
+            }
+        }
+
+        function sendGetAllActivities() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ type: 'GetAllActivities', data: {} }));
+            } else {
+                setMessage('WebSocket connection not open.', 'red');
+            }
+        }
+
+        function sendCreateActivity() {
+            const nameInput = document.getElementById('create-name');
+            const ownerInput = document.getElementById('create-owner');
+            const name = nameInput.value.trim();
+            const userId = ownerInput.value.trim();
+
+            if (!name || !userId) {
+                setMessage('Please provide a name and your User ID.', 'red');
+                return;
+            }
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ type: 'CreateActivity', data: { name }, userId }));
+                nameInput.value = '';
+                ownerInput.value = '';
+            } else {
+                setMessage('WebSocket connection not open.', 'red');
+            }
+        }
+
+        function sendJoinActivity() {
+            const activityIdInput = document.getElementById('join-activity-id');
+            const userIdInput = document.getElementById('join-user-id');
+            const activityId = parseInt(activityIdInput.value);
+            const userId = userIdInput.value.trim();
+
+            if (isNaN(activityId) || !userId) {
+                setMessage('Please provide a valid Activity ID and your User ID.', 'red');
+                return;
+            }
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ type: 'JoinActivity', data: { activityId }, userId }));
+                activityIdInput.value = '';
+            } else {
+                setMessage('WebSocket connection not open.', 'red');
+            }
+        }
+
+        function sendLeaveActivity() {
+            const activityIdInput = document.getElementById('leave-activity-id');
+            const userIdInput = document.getElementById('leave-user-id');
+            const activityId = parseInt(activityIdInput.value);
+            const userId = userIdInput.value.trim();
+
+            if (isNaN(activityId) || !userId) {
+                setMessage('Please provide a valid Activity ID and your User ID.', 'red');
+                return;
+            }
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ type: 'LeaveActivity', data: { activityId }, userId }));
+                activityIdInput.value = '';
+            } else {
+                setMessage('WebSocket connection not open.', 'red');
+            }
+        }
+
+        function sendStartActivity() {
+            const activityIdInput = document.getElementById('start-activity-id');
+            const userIdInput = document.getElementById('start-user-id');
+            const activityId = parseInt(activityIdInput.value);
+            const userId = userIdInput.value.trim();
+
+            if (isNaN(activityId) || !userId) {
+                setMessage('Please provide a valid Activity ID and your User ID (Owner).', 'red');
+                return;
+            }
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ type: 'StartActivity', data: { activityId }, userId }));
+                activityIdInput.value = '';
+            } else {
+                setMessage('WebSocket connection not open.', 'red');
+            }
+        }
+
+        function displayActivities(activities) {
+            const activitiesListDiv = document.getElementById('activities-list');
+            activitiesListDiv.innerHTML = '';
+            if (activities.length > 0) {
+                activities.forEach(activity => {
+                    const item = document.createElement('div');
+                    item.classList.add('activity-item');
+                    item.textContent = `ID: ${activity.id}, Name: ${activity.name}, Owner: ${activity.ownerId}, Members: ${activity.memberIds ? activity.memberIds.join(', ') : 'None'}`;
+                    activitiesListDiv.appendChild(item);
+                });
+            } else {
+                activitiesListDiv.textContent = 'No activities available.';
+            }
+        }
+
+        function setMessage(text, color = 'black') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.style.color = color;
+        }
+
+        // Connect to WebSocket when the page loads
+        connectWebSocket();
+    </script>
 </body>
 </html>

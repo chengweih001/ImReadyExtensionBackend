@@ -1,8 +1,8 @@
 'use strict';
 
 const apprun = require('apprun').app;
-// require('./db_new_logging');
-require('./db');
+require('./db_new_logging');
+// require('./db');
 
 const express = require('express');
 const path = require('path');
