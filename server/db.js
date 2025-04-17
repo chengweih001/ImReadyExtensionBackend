@@ -83,9 +83,9 @@ function broadcast(wss, message) {
   });
 }
 
-function broadcastActivityDeleted(activityId, wss) {
-  console.log('[DEBUG] Broadcasting ActivityDeleted:', activityId);
-  broadcast(wss, { type: 'ActivityDeleted', data: { activityId } });
+function broadcastActivityDeleted(activityId, started, wss) {
+  console.log('[DEBUG] Broadcasting ActivityDeleted:', activityId, started);
+  broadcast(wss, { type: 'ActivityDeleted', data: { activityId, started } });
 }
 
 async function broadcastActivityChanged(activityId, wss) {
@@ -212,7 +212,7 @@ app.on('LeaveActivity', async (json, ws, wss) => {
           [json.data.activityId]
         );
         console.log('[DEBUG] Deleted activity members. Rows affected:', deleteMembersResult.changes);
-        broadcastActivityDeleted(json.data.activityId, wss);
+        broadcastActivityDeleted(json.data.activityId, false, wss);
       }
     } else {
       broadcastActivityChanged(json.data.activityId, wss);        
@@ -240,7 +240,7 @@ app.on('StartActivity', async (json, ws, wss) => {
       );
       console.log('[DEBUG] Deleted activity members. Rows affected:', deleteMembersResult.changes);
       ws.send(JSON.stringify(json));
-      broadcastActivityDeleted(json.data.activityId, wss);
+      broadcastActivityDeleted(json.data.activityId, true, wss);
     } else {
       const errorMessage = 'Activity not found or you are not the owner.';
       console.warn('[DEBUG]', errorMessage);
