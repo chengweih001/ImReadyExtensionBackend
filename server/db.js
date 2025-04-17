@@ -234,7 +234,7 @@ app.on('KeepAlive', (json, ws) => {
   // ws.send(JSON.stringify({ ...json, type: 'I am alive' }));
 });
 
-app.on('@delete-all-activity', async (json, ws) => {
+app.on('DeleteAllActivity', async (json, ws) => {
   console.log('[DEBUG] Handling DeleteAllActivities');
   try {
     await executeDatabaseQuery('DELETE FROM Activities');

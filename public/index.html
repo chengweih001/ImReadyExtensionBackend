@@ -50,6 +50,9 @@
     <input type="text" id="start-user-id" value="testUser" placeholder="Your User ID (Owner)"><br>
     <button onclick="sendStartActivity()">Start Activity</button>
 
+    <h2>Delete All Activities</h2>
+    <button onclick="sendDeleteAllActivity()" style="background-color: #f44336; color: white;">Delete All Activities (Warning!)</button>
+  
     <script>
         const websocketUrl = 'wss://2025-capability-hackathon-im-ready-extension-backend.glitch.me/'; // Adjust if your WebSocket server runs on a different URL/port
         let websocket;
@@ -107,6 +110,10 @@
                     setMessage(`Activity ${message.data.activityId} deleted.`, 'orange');
                     sendGetAllActivities(); // Refresh the list
                     break;
+                case 'DeleteAllActivity':
+                    setMessage('All activities deleted.', 'orange');
+                    sendGetAllActivities(); // Refresh the list
+                    break;                
                 // Handle other message types if your backend sends them
                 default:
                     console.log('Unknown WebSocket message type:', message);
@@ -197,6 +204,14 @@
                 setMessage('WebSocket connection not open.', 'red');
             }
         }
+      
+        function sendDeleteAllActivity() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ type: 'DeleteAllActivity', data: {} }));
+            } else {
+                setMessage('WebSocket connection not open.', 'red');
+            }
+        }      
 
         function displayActivities(activities) {
             const activitiesListDiv = document.getElementById('activities-list');
