@@ -77,7 +77,16 @@ function broadcastActivityChanged(activityId, wss) {
         const updatedActivities = activities.map(activity => ({
           ...activity,
           memberIds: activityMembersMap[activity.id] || []
-        }));        
+        }));
+        
+        // TODO: It is supposed to be more than 0.
+        if (updatedActivities.length > 0) {
+          wss.clients.forEach(function each(client) {
+            if (client.readyState === webSocket.OPEN) {
+              client.send(JSON.stringify({type: 'ActivityChanged', data: {activity: updatedActivities[0]}}));
+            }
+          });          
+        }
         
         // json.state = updatedActivities;
         // console.log('  >', json);
@@ -148,7 +157,7 @@ app.on('CreateActivity', (json, ws, wss) => {
           console.log('  >', 'added creator to ActivityMembers', { activityId: this.lastID, userId: json.userId });
         }
         ws.send(JSON.stringify(json)); // Send the response back to the client after both insertions
-        // broadcast({type: 'ActivityChanged'}, wss);
+        broadcastActivityChanged(this.lastID, wss);
       });
     });
   });
