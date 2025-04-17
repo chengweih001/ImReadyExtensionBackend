@@ -169,7 +169,7 @@ app.on('CreateActivity', async (json, ws, wss) => {
   }
 });
 
-app.on('JoinActivity', async (json, ws) => {
+app.on('JoinActivity', async (json, ws, wss) => {
   console.log('[DEBUG] Handling JoinActivity:', json);
   try {
     await executeDatabaseQuery(
@@ -178,13 +178,14 @@ app.on('JoinActivity', async (json, ws) => {
     );
     console.log('[DEBUG] User joined activity:', json.userId, json.data.activityId);
     ws.send(JSON.stringify(json));
+    broadcastActivityChanged(json.data.activityId, wss);    
   } catch (error) {
     console.error('Error joining activity:', error);
     ws.send(JSON.stringify({ ...json, error: 'Failed to join activity' }));
   }
 });
 
-app.on('LeaveActivity', async (json, ws) => {
+app.on('LeaveActivity', async (json, ws, wss) => {
   console.log('[DEBUG] Handling LeaveActivity:', json);
   try {
     const result = await executeDatabaseQuery(
@@ -193,6 +194,7 @@ app.on('LeaveActivity', async (json, ws) => {
     );
     console.log('[DEBUG] User left activity. Rows affected:', result.changes);
     ws.send(JSON.stringify(json));
+    broadcastActivityChanged(json.data.activityId, wss);        
   } catch (error) {
     console.error('Error leaving activity:', error);
     ws.send(JSON.stringify({ ...json, error: 'Failed to leave activity' }));
