@@ -189,13 +189,23 @@ app.on('JoinActivity', async (json, ws, wss) => {
 app.on('LeaveActivity', async (json, ws, wss) => {
   console.log('[DEBUG] Handling LeaveActivity:', json);
   try {
+    const activities = await executeDatabaseAll(
+      'SELECT * FROM Activities WHERE id = ?',
+      [json.data.activityId]
+    );    
     const result = await executeDatabaseQuery(
       'DELETE FROM ActivityMembers WHERE activityId = ? AND memberId = ?',
       [json.data.activityId, json.userId]
     );
     console.log('[DEBUG] User left activity. Rows affected:', result.changes);
     ws.send(JSON.stringify(json));
-    broadcastActivityChanged(json.data.activityId, wss);        
+    console.log('[DEBUG]', activities.length, json.userId);
+    if (activities.length > 0 && activities[0].ownerId == json.userId) {
+      broadcastActivityDeleted(json.data.activityId, wss);           
+    } else {
+      broadcastActivityChanged(json.data.activityId, wss);        
+    }
+
   } catch (error) {
     console.error('Error leaving activity:', error);
     ws.send(JSON.stringify({ ...json, error: 'Failed to leave activity' }));
