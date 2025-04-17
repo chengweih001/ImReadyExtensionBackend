@@ -136,7 +136,7 @@ app.on('GetAllActivities', async (json, ws) => {
 
     const response = { ...json, data: { activities: activitiesWithMembers } };
     // console.log('[DEBUG] Sending GetAllActivities response:', JSON.stringify(response));
-    console.log('[DEBUG] Sending GetAllActivities response:', JSON.stringify(response));
+    console.log('[DEBUG] Sending GetAllActivities response:');
     ws.send(JSON.stringify(response));
   } catch (error) {
     console.error('Error fetching all activities:', error);
