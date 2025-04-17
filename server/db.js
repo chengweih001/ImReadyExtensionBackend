@@ -201,7 +201,19 @@ app.on('LeaveActivity', async (json, ws, wss) => {
     ws.send(JSON.stringify(json));
     console.log('[DEBUG]', activities.length, json.userId);
     if (activities.length > 0 && activities[0].ownerId == json.userId) {
-      broadcastActivityDeleted(json.data.activityId, wss);           
+      const deleteActivityResult = await executeDatabaseQuery(
+        'DELETE FROM Activities WHERE id = ? AND ownerId = ?',
+        [json.data.activityId, json.userId]
+      );
+      console.log('[DEBUG] Deleted activity. Rows affected:', deleteActivityResult.changes);
+      if (deleteActivityResult.changes > 0) {
+        const deleteMembersResult = await executeDatabaseQuery(
+          'DELETE FROM ActivityMembers WHERE activityId = ?',
+          [json.data.activityId]
+        );
+        console.log('[DEBUG] Deleted activity members. Rows affected:', deleteMembersResult.changes);
+        broadcastActivityDeleted(json.data.activityId, wss);
+      }
     } else {
       broadcastActivityChanged(json.data.activityId, wss);        
     }
